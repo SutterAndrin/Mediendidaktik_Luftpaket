@@ -1,0 +1,1334 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Die Reise eines Luftpakets</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #173247; --muted: #557083; --sky: #edf7fa;
+    --accent: #16759a; --line: #c5d9e0; --paper: #f4f8fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 22px; background: var(--paper); color: var(--ink);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1580px; margin: 0 auto; }
+  h1 { margin: 0 0 5px; font-size: clamp(1.5rem, 3vw, 2rem); }
+  .intro { margin: 0 0 18px; max-width: 960px; color: var(--muted); }
+  .layout { display: grid; grid-template-columns: minmax(245px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .controls, .panel { background: white; border: 1px solid var(--line); border-radius: 14px; }
+  .controls { padding: 18px; }
+  .panel { min-width: 0; padding: 14px; }
+  .control { margin: 0 0 22px; }
+  .control label { display: flex; justify-content: space-between; gap: 10px; font-weight: 650; }
+  output { color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  input[type="range"] { width: 100%; margin: 12px 0 4px; accent-color: var(--accent); }
+  .hint, .note { color: var(--muted); font-size: .9rem; }
+  .readout { margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .readout p { margin: 7px 0; }
+  .value { font-weight: 700; font-variant-numeric: tabular-nums; }
+  input:focus-visible { outline: 3px solid #f0ac43; outline-offset: 3px; }
+  .views { display: block; }
+  h2 { margin: 2px 5px 8px; font-size: 1.08rem; }
+  canvas { display: block; width: 100%; height: 620px; border-radius: 9px; background: #f2f9fb; }
+  .note { margin: 13px 5px 3px; }
+  .legend { display: flex; align-items: center; gap: 10px; margin: 11px 5px 3px; padding: 8px 11px; border-radius: 9px; background: #f2f8fa; color: var(--muted); font-size: .9rem; }
+  .legend svg { flex: 0 0 auto; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; background: #e5f2f6; color: #245a70; font-size: .84rem; font-weight: 650; }
+  .side { display: grid; gap: 18px; min-width: 0; }
+  .tasks { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .tasks-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .tasks-head h2 { margin: 0; font-size: 1.05rem; }
+  .linkbtn { border: 0; background: none; color: var(--accent); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; padding: 0; }
+  .progress { height: 7px; border-radius: 99px; background: #e3eef2; overflow: hidden; margin-bottom: 4px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .count { color: var(--muted); font-size: .82rem; margin-bottom: 10px; }
+  .task-title { font-weight: 700; margin: 0 0 6px; }
+  .task-text { margin: 0 0 10px; }
+  .goal { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 9px; font-size: .88rem; margin-bottom: 10px; background: #fff4e3; color: #8a5a12; }
+  .goal.done { background: #e4f4ec; color: #1d6b48; }
+  .question { border-top: 1px solid var(--line); padding-top: 10px; }
+  .question.locked { opacity: .45; pointer-events: none; }
+  .question p { margin: 0 0 8px; font-weight: 650; }
+  .opt { display: block; width: 100%; text-align: left; margin: 0 0 6px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: #f7fbfc; color: var(--ink); font: inherit; font-size: .93rem; cursor: pointer; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); }
+  .opt.ok { background: #e4f4ec; border-color: #3a9a6c; }
+  .opt.bad { background: #fbe9e4; border-color: #d0715a; text-decoration: line-through; }
+  .numrow { display: flex; gap: 8px; }
+  .numrow input { flex: 1; width: 0; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; font: inherit; }
+  .btn { padding: 8px 13px; border: 0; border-radius: 9px; background: var(--accent); color: white; font: inherit; font-weight: 650; cursor: pointer; }
+  .btn:disabled { background: #b7cbd3; cursor: default; }
+  .btn.ghost { background: #e5f2f6; color: #245a70; }
+  .feedback { margin-top: 9px; font-size: .9rem; }
+  .feedback.ok { color: #1d6b48; }
+  .feedback.bad { color: #a8452c; }
+  .task-nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+  .summary li { margin: 3px 0; }
+  .cat { display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 99px; background: #e5f2f6; color: #245a70; font-weight: 650; }
+  .chaps { display: grid; gap: 7px; margin-bottom: 14px; }
+  .chap { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #f7fbfc; color: var(--ink); font: inherit; font-weight: 650; text-align: left; cursor: pointer; }
+  .chap:hover { border-color: var(--accent); }
+  .chap-st { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .testbtn { width: 100%; background: #c66a1f; }
+  .stack { display: grid; gap: 8px; margin-top: 12px; }
+  .opt.sel { background: #e5f2f6; border-color: var(--accent); font-weight: 650; }
+  .orderlist { margin: 0 0 10px; padding: 8px 10px 8px 30px; border: 1px dashed var(--line); border-radius: 9px; background: #fbfdfe; min-height: 40px; font-size: .92rem; }
+  .orderlist li { margin: 3px 0; }
+  .orderlist .empty { list-style: none; margin-left: -20px; color: var(--muted); }
+  .pool { margin-bottom: 8px; }
+  .catrow { display: grid; grid-template-columns: 1fr 70px auto; gap: 8px; align-items: center; font-size: .88rem; margin: 5px 0; }
+  .catbar { height: 8px; border-radius: 99px; background: #e3eef2; overflow: hidden; }
+  .catbar span { display: block; height: 100%; background: #2e9b68; }
+  details { border-top: 1px solid var(--line); padding: 6px 0; font-size: .88rem; }
+  details summary { cursor: pointer; font-weight: 650; }
+  details p { margin: 5px 0; }
+  .extra-label { margin: 16px 0 6px; font-size: .82rem; font-weight: 700; color: #a8640f; text-transform: uppercase; letter-spacing: .04em; }
+  .chap.extra { background: #fff8ee; border-color: #f0cf9c; }
+  .chap.extra .chap-st { color: #a8640f; }
+  .src { margin-top: 6px; font-size: .8rem; color: var(--muted); }
+  .src a { color: var(--accent); }
+  .control.pulse { border-radius: 10px; box-shadow: 0 0 0 3px #f0ac43; animation: pulse 1.6s infinite; padding: 6px 8px; margin-left: -8px; margin-right: -8px; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(240,172,67,.35); } }
+  /* Bühne: Diagramm mit eingebettetem, ausfahrbarem Reglermenü */
+  .stage { position: relative; }
+  .drawer { position: absolute; top: 10px; left: 84px; z-index: 2; width: min(280px, calc(100% - 94px)); }
+  .drawer-toggle { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: rgba(255,255,255,.94); color: var(--ink); font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(30,70,90,.14); }
+  .drawer-toggle:hover { border-color: var(--accent); }
+  .drawer-toggle .chev { display: inline-block; transition: transform .25s; color: var(--accent); }
+  .drawer.open .drawer-toggle .chev { transform: rotate(90deg); }
+  .drawer-toggle.attn { box-shadow: 0 0 0 3px #f0ac43; animation: pulse 1.6s infinite; }
+  .drawer-body { margin-top: 6px; padding: 14px 14px 4px; border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(255,255,255,.93); backdrop-filter: blur(4px); box-shadow: 0 6px 18px rgba(30,70,90,.16);
+    transform-origin: top left; transition: opacity .22s, transform .22s; }
+  .drawer:not(.open) .drawer-body { opacity: 0; transform: translateX(-12px) scale(.97); pointer-events: none; visibility: hidden; }
+  .drawer .control { margin: 0 0 14px; }
+  .drawer .control label { font-size: .92rem; }
+  .drawer input[type="range"] { margin: 8px 0 2px; }
+  .drawer .hint { font-size: .8rem; }
+  .drawer .control.pulse { margin-left: -6px; margin-right: -6px; padding: 5px 6px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  canvas { height: 660px; }
+  @media (max-width: 1280px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 620px) { body { padding: 12px; } canvas { height: 520px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Die Reise eines Luftpakets</h1>
+  <p class="intro">Verändere Höhe, Startfeuchtigkeit und Temperatur. Beobachte im gemeinsamen Höhen-Temperatur-Diagramm den Luftdruck und den adiabatischen Temperaturverlauf des Luftpakets. Die Regler findest du im ausfahrbaren Menü oben links in der Grafik, Höhe, Temperatur und Luftdruck des Pakets sind an den Achsen markiert. Weitere Werte wie Feuchtigkeit oder Volumen stehen in einer Box, die mit dem Paket mitwandert: in einer Aufgabe nur, wenn du sie brauchst, in der Übersicht immer. Die Aufgaben führen dich Schritt für Schritt durch das Modell.</p>
+  <div class="layout">
+   <div class="side">
+    <section class="tasks" aria-label="Geführte Aufgaben">
+      <div class="tasks-head">
+        <h2>Aufgaben</h2>
+        <span><button class="linkbtn" id="taskMenu" type="button">Übersicht</button> · <button class="linkbtn" id="taskToggle" type="button">Ausblenden</button></span>
+      </div>
+      <div id="taskBody">
+        <div class="progress" id="taskProgress"><div id="taskBar"></div></div>
+        <div class="count" id="taskCount"></div>
+        <div id="taskContent"></div>
+        <div class="task-nav" id="taskNav">
+          <button class="btn ghost" id="taskPrev" type="button">← Zurück</button>
+          <button class="btn" id="taskNext" type="button">Weiter →</button>
+        </div>
+      </div>
+    </section>
+   </div>
+    <div class="views" aria-label="Gemeinsame Darstellung von Luftdruck und adiabatischem Temperaturverlauf">
+      <section class="panel" aria-label="Luftdruck, Temperaturverlauf und Luftpaket">
+        <h2>Luftdruck und Temperaturverlauf des Luftpakets</h2>
+        <div class="stage">
+          <canvas id="pressureCanvas" role="img" aria-label="Höhendiagramm mit schematischer Luftdichte, Luftdruckskala, trocken- sowie feuchtadiabatischer Temperaturkurve und den aktuellen Zustandsgrössen des Luftpakets."></canvas>
+          <div class="drawer open" id="drawer">
+            <button class="drawer-toggle" id="drawerToggle" type="button" aria-expanded="true" aria-controls="drawerBody"><span class="chev">▸</span> Regler</button>
+            <section class="drawer-body" id="drawerBody" aria-label="Einstellungen des Luftpakets">
+              <div class="control" data-ctrl="altitude">
+                <label for="altitude">Höhe <output id="altitudeValue">500 m ü. M.</output></label>
+                <input id="altitude" type="range" min="500" max="3200" step="50" value="500">
+                <div class="hint">Bewege das Luftpaket in der Höhensäule nach oben.</div>
+              </div>
+              <div class="control" data-ctrl="humidity">
+                <label for="humidity">Startfeuchtigkeit <output id="humidityValue">70 %</output></label>
+                <input id="humidity" type="range" min="20" max="100" step="1" value="70">
+                <div class="hint">Bei höherer Feuchtigkeit liegt die Wolkenbasis tiefer.</div>
+              </div>
+              <div class="control" data-ctrl="temperature">
+                <label for="temperature">Starttemperatur <output id="temperatureValue">20 °C</output></label>
+                <input id="temperature" type="range" min="0" max="30" step="1" value="20">
+                <div class="hint">Startpunkt: 500 m ü. M.</div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="sr-only" aria-live="polite">
+          Temperatur <span id="tempReadout"></span>, relative Luftfeuchtigkeit <span id="rhReadout"></span>,
+          Volumen <span id="volumeReadout"></span>, Luftdruck <span id="pressureReadout"></span>,
+          Vorgang <span id="processReadout"></span>, Wolkenbasis <span id="cloudReadout"></span>.
+        </div>
+        <div class="legend" aria-label="Legende">
+          <svg width="58" height="48" viewBox="0 0 64 54" aria-hidden="true">
+            <rect x="20" y="15" width="24" height="24" rx="1" fill="#a9d4e4" stroke="#214f66" stroke-width="2"/>
+            <path d="M28 0h8v7h5l-9 9-9-9h5z" fill="#214f66"/>
+            <path d="M28 54h8v-7h5l-9-9-9 9h5z" fill="#214f66"/>
+            <path d="M0 21h11v-5l10 11-10 11v-5H0z" fill="#214f66"/>
+            <path d="M64 21H53v-5L43 27l10 11v-5h11z" fill="#214f66"/>
+          </svg>
+          <span><strong>Pfeile:</strong> Der Umgebungsdruck wirkt von allen Seiten auf das Luftpaket.</span>
+        </div>
+        <p class="note"><span style="color:#2679ad">Blaue Kurve: trockenadiabatisch</span> · <span style="color:#15846d">Grüne Kurve: feuchtadiabatisch</span>. Viele Punkte und kräftigeres Blau stehen für dichtere Luft und höheren Luftdruck. Mit zunehmender Höhe wird die Luft dünner und der Luftdruck geringer. Das Quadrat wird mit zunehmendem Volumen grösser.</p>
+      </section>
+    </div>
+  </div>
+  <p class="note">Das Modell ist vereinfacht. Die Wolkenbasis wird geschätzt. Unterhalb der Wolkenbasis kühlt das Luftpaket mit etwa 1 °C pro 100 Höhenmeter ab, darüber gesättigt mit etwa 0,5 °C. Die Grössenänderung des Quadrats, die Änderung von Länge und Breite der Druckpfeile sowie die Geschwindigkeit der Teilchen sind zur besseren Erkennbarkeit verstärkt.</p>
+</main>
+<script>
+(() => {
+  const z0 = 500, zMax = 3200;
+  const altitude = document.getElementById("altitude");
+  const humidity = document.getElementById("humidity");
+  const temperature = document.getElementById("temperature");
+  const altitudeValue = document.getElementById("altitudeValue");
+  const humidityValue = document.getElementById("humidityValue");
+  const temperatureValue = document.getElementById("temperatureValue");
+  const tempReadout = document.getElementById("tempReadout");
+  const rhReadout = document.getElementById("rhReadout");
+  const volumeReadout = document.getElementById("volumeReadout");
+  const pressureReadout = document.getElementById("pressureReadout");
+  const processReadout = document.getElementById("processReadout");
+  const cloudReadout = document.getElementById("cloudReadout");
+  const pressureCanvas = document.getElementById("pressureCanvas");
+  const pressureContext = pressureCanvas.getContext("2d");
+  const drawer = document.getElementById("drawer");
+  const drawerToggle = document.getElementById("drawerToggle");
+  let drawerOpen = true, autoOpenedFor = null;
+  function setDrawer(open) {
+    drawerOpen = open;
+    drawer.classList.toggle("open", open);
+    drawerToggle.setAttribute("aria-expanded", String(open));
+    if (open) drawerToggle.classList.remove("attn");
+  }
+  drawerToggle.addEventListener("click", () => setDrawer(!drawerOpen));
+  if (window.matchMedia("(max-width: 620px)").matches) setDrawer(false);
+  let ctx, width = 0, height = 0, pressureWidth = 0, pressureHeight = 0, lastFrame = 0;
+  const movingDots = [
+    {x:.22,y:.28,vx:.43,vy:.31},{x:.49,y:.21,vx:-.32,vy:.47},
+    {x:.75,y:.29,vx:.38,vy:-.36},{x:.32,y:.49,vx:-.46,vy:-.27},
+    {x:.66,y:.51,vx:.31,vy:.42},{x:.23,y:.74,vx:-.35,vy:.38},
+    {x:.50,y:.72,vx:.48,vy:-.32},{x:.78,y:.74,vx:-.39,vy:-.34},
+    {x:.42,y:.38,vx:.29,vy:-.43},{x:.59,y:.63,vx:-.42,vy:.30}
+  ];
+  const staticDots = [[.25,.26],[.52,.22],[.76,.30],[.32,.51],[.65,.50],[.22,.76],[.50,.72],[.78,.72]];
+  let seed = 2026;
+  function random() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  const ambientDots = Array.from({length:160}, () => ({
+    f: Math.pow(random(), 1.65), x: random()
+  }));
+
+  function fitCanvas(canvas, context) {
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width * ratio);
+    canvas.height = Math.round(rect.height * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    return [rect.width, rect.height];
+  }
+  function fit() {
+    [pressureWidth, pressureHeight] = fitCanvas(pressureCanvas, pressureContext);
+    update();
+  }
+  function pressure(h) {
+    // Näherung der Standardatmosphäre in der unteren Troposphäre, in hPa.
+    const p0 = 1013.25, t0 = 288.15, lapse = 0.0065, g = 9.80665, rd = 287.05;
+    const t = t0 - lapse * h;
+    return p0 * Math.pow(t / t0, g / (rd * lapse));
+  }
+  function saturationVapourPressure(t) {
+    return 6.112 * Math.exp((17.62 * t) / (243.12 + t));
+  }
+  function dewPoint(t, rh) {
+    const a = 17.62, b = 243.12;
+    const gamma = Math.log(Math.max(1, rh) / 100) + a * t / (b + t);
+    return b * gamma / (a - gamma);
+  }
+  function cloudBase(t0, rh0) {
+    return z0 + Math.max(0, 125 * (t0 - dewPoint(t0, rh0)));
+  }
+  function parcelState(z, t0, rh0) {
+    const lcl = cloudBase(t0, rh0);
+    const es0 = saturationVapourPressure(t0);
+    let t, rh, process;
+    if (z < lcl) {
+      t = t0 - 9.8 * (z - z0) / 1000;
+      rh = Math.min(100, rh0 * es0 / saturationVapourPressure(t) * pressure(z) / pressure(z0));
+      process = z <= z0 ? "Startzustand" : "trockenadiabatisch";
+    } else {
+      const tAtCloud = t0 - 9.8 * (lcl - z0) / 1000;
+      t = tAtCloud - 5.0 * (z - lcl) / 1000;
+      rh = 100;
+      process = z <= z0 + 1 ? "gesättigter Start" : "feuchtadiabatisch";
+    }
+    const volumeRatio = ((t + 273.15) / (t0 + 273.15)) * (pressure(z0) / pressure(z));
+    return { z, t, rh, lcl, volumeRatio, process };
+  }
+  function parcelSide(volumeRatio, base = 40) {
+    // Deutliche, schematische Grössenänderung, damit sie im Unterricht sichtbar ist.
+    return base * Math.pow(Math.max(.3, volumeRatio), 1.25);
+  }
+  function yAt(z, top, bottom) {
+    return bottom - (z - z0) / (zMax - z0) * (bottom - top);
+  }
+  function drawBackground(top, bottom, left, right) {
+    const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+    gradient.addColorStop(0, "#ffffff");
+    gradient.addColorStop(.48, "#f0f8fb");
+    gradient.addColorStop(1, "#d7edf4");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    ctx.font = "12px system-ui, sans-serif";
+    for (let z = z0; z <= 3000; z += 500) {
+      const y = yAt(z, top, bottom);
+      ctx.strokeStyle = "rgba(44,91,112,.18)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+      ctx.fillStyle = "#557083"; ctx.textAlign = "right";
+      ctx.fillText(z + " m", left - 9, y + 4);
+      ctx.fillStyle = "#557083"; ctx.textAlign = "left";
+      ctx.fillText(Math.round(pressure(z)) + " hPa", right + 8, y + 4);
+    }
+  }
+  function drawPacket(x, centerY, side, color, label, dots = null, labelGap = 9) {
+    ctx.save();
+    ctx.shadowColor = "rgba(30,70,90,.18)"; ctx.shadowBlur = 7; ctx.shadowOffsetY = 2;
+    ctx.fillStyle = color; ctx.strokeStyle = "#244c62"; ctx.lineWidth = 2;
+    ctx.fillRect(x - side/2, centerY - side/2, side, side);
+    ctx.strokeRect(x - side/2, centerY - side/2, side, side);
+    ctx.restore();
+    if (dots) {
+      ctx.fillStyle = "rgba(23,50,71,.8)";
+      for (const dot of dots) {
+        const dx = Array.isArray(dot) ? dot[0] : dot.x;
+        const dy = Array.isArray(dot) ? dot[1] : dot.y;
+        ctx.beginPath(); ctx.arc(x - side/2 + side*dx, centerY - side/2 + side*dy, 2.2, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.fillStyle = "#173247"; ctx.font = "bold 12px system-ui, sans-serif"; ctx.textAlign = "center";
+    let labelY = centerY - side/2 - labelGap;
+    if (labelY < 16) labelY = centerY + side/2 + labelGap;
+    if (labelY > height - 8) labelY = centerY - side/2 - 12;
+    ctx.fillText(label, x, labelY);
+  }
+  function drawPressureArrows(x, y, side, pressureRatio) {
+    const half = side / 2;
+    // Die Druckänderung wird gegenüber dem realen Verhältnis verstärkt dargestellt.
+    const lowestRatio = pressure(zMax) / pressure(z0);
+    const strength = Math.max(0, Math.min(1, (pressureRatio - lowestRatio) / (1 - lowestRatio)));
+    const length = 30 + 21 * strength;
+    const gap = 8;
+    const shaft = 10 + 6 * strength;
+    const head = shaft * 2.1;
+    const headLength = Math.min(18, length * .42);
+    ctx.save();
+    ctx.strokeStyle = "#214f66"; ctx.fillStyle = "#214f66";
+    ctx.lineWidth = 1.5; ctx.lineJoin = "miter";
+    function arrow(x1, y1, x2, y2) {
+      const dx=x2-x1, dy=y2-y1, total=Math.hypot(dx,dy);
+      const ux=dx/total, uy=dy/total, nx=-uy, ny=ux;
+      const neckX=x2-ux*headLength, neckY=y2-uy*headLength;
+      ctx.beginPath();
+      ctx.moveTo(x1+nx*shaft/2,y1+ny*shaft/2);
+      ctx.lineTo(neckX+nx*shaft/2,neckY+ny*shaft/2);
+      ctx.lineTo(neckX+nx*head/2,neckY+ny*head/2);
+      ctx.lineTo(x2,y2);
+      ctx.lineTo(neckX-nx*head/2,neckY-ny*head/2);
+      ctx.lineTo(neckX-nx*shaft/2,neckY-ny*shaft/2);
+      ctx.lineTo(x1-nx*shaft/2,y1-ny*shaft/2);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    // Gefüllte, kräftige Pfeile wie beim Drucksymbol.
+    arrow(x, y-half-gap-length, x, y-half-gap);
+    arrow(x, y+half+gap+length, x, y+half+gap);
+    arrow(x-half-gap-length, y, x-half-gap, y);
+    arrow(x+half+gap+length, y, x+half+gap, y);
+    ctx.restore();
+    return length;
+  }
+  function drawCombined(state, t0, rh0) {
+    ctx.clearRect(0, 0, width, height);
+    const top = 78, bottom = height - 100, left = 76, right = width - 78;
+    const xMin = Math.min(-30, state.t - 4, t0 - 4);
+    const xMax = Math.max(35, t0 + 4);
+    const x = t => left + (t - xMin) / (xMax - xMin) * (right - left);
+    const y = z => yAt(z, top, bottom);
+    drawBackground(top, bottom, left, right);
+
+    // Die unterschiedlich dicht verteilten Punkte stellen die Umgebungsluft dar.
+    for (const dot of ambientDots) {
+      const z = z0 + dot.f * (zMax - z0);
+      const px = left + 5 + dot.x * (right - left - 10);
+      const py = y(z);
+      ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(48, 121, 150, ${.34 + .48 * (1 - dot.f)})`; ctx.fill();
+    }
+
+    for (let temp = Math.ceil(xMin / 5) * 5; temp <= xMax; temp += 5) {
+      const px = x(temp);
+      ctx.strokeStyle = "rgba(44,91,112,.13)";
+      ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, bottom); ctx.stroke();
+      ctx.fillStyle = "#557083"; ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(temp + "°", px, bottom + 38);
+    }
+    ctx.fillStyle = "#173247"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("Temperatur", (left + right) / 2, height - 9);
+    ctx.save(); ctx.translate(15, (top + bottom) / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText("Höhe über Meer", 0, 0); ctx.restore();
+    ctx.fillStyle = "#557083"; ctx.textAlign = "right"; ctx.font = "11px system-ui, sans-serif";
+    ctx.fillText("Umgebungsdruck", width - 6, top - 15);
+
+    // Die Kurve zeigt den ganzen modellierten Aufstieg; der Punkt markiert die gewählte Höhe.
+    const curve = [];
+    for (let z = z0; z <= zMax; z += 10) curve.push(parcelState(z, t0, rh0));
+    function drawLine(points, color) {
+      if (!points.length) return;
+      ctx.beginPath();
+      points.forEach((s, i) => i ? ctx.lineTo(x(s.t), y(s.z)) : ctx.moveTo(x(s.t), y(s.z)));
+      ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.stroke();
+    }
+    drawLine(curve.filter(s => s.z <= state.lcl), "#2679ad");
+    drawLine(curve.filter(s => s.z >= state.lcl), "#15846d");
+    if (state.lcl <= zMax) {
+      const cloudY = y(state.lcl);
+      ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = "#638b9b"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(left, cloudY); ctx.lineTo(right, cloudY); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = "#456e80"; ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "left";
+      ctx.textAlign = "right";
+      ctx.fillText("Wolkenbasis " + Math.round(state.lcl) + " m · " + Math.round(pressure(state.lcl)) + " hPa", right - 6, cloudY + 15);
+    }
+
+    // Zielhöhe der aktuellen Aufgabe
+    const target = taskTargetZ();
+    if (target !== null) {
+      const targetZ = target.z, ty = y(targetZ), reached = target.done && Math.abs(state.z - targetZ) < 1;
+      ctx.save(); ctx.setLineDash([9, 5]); ctx.strokeStyle = reached ? "#2e9b68" : "#e08a1e"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(left, ty); ctx.lineTo(right, ty); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = reached ? "#1d6b48" : "#a8640f"; ctx.font = "bold 12px system-ui, sans-serif"; ctx.textAlign = "right";
+      ctx.fillText((reached ? "✓ Ziel erreicht: " : "Ziel: ") + targetZ + " m", right - 6, ty - 7);
+    }
+
+    const startX = x(t0), startY = y(z0), currentX = x(state.t), currentY = y(state.z);
+    // Gestrichelte Startgrösse als Vergleich; beim Start liegt sie direkt unter dem Luftpaket.
+    if (state.z > z0 + 80) {
+      ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = "#c64b27"; ctx.lineWidth = 2;
+      ctx.strokeRect(startX - 16, startY - 16, 32, 32); ctx.restore();
+      ctx.fillStyle = "#456e80"; ctx.font = "bold 11px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("Start", startX, startY - 23);
+    }
+    const side = parcelSide(state.volumeRatio, 36);
+    const pressureRatio = pressure(state.z) / pressure(z0);
+    drawAxisMarkers(state, currentX, currentY, top, bottom, left, right);
+    const arrowLength = drawPressureArrows(currentX, currentY, side, pressureRatio);
+    drawPacket(currentX, currentY, side, state.rh >= 99 ? "#9cc8df" : "#efaa78", "Luftpaket", movingDots, arrowLength + 13);
+    drawValueCard(state, currentX, currentY, side / 2 + arrowLength + 14, top, bottom, left, right);
+  }
+  function roundRect(x0, y0, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x0 + r, y0); ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, r); ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
+    ctx.arcTo(x0, y0 + h, x0, y0, r); ctx.arcTo(x0, y0, x0 + w, y0, r); ctx.closePath();
+  }
+  // Zustandsgrössen des Luftpakets direkt im Diagramm, neben dem Paket.
+  // Welche Grössen in der Box stehen: Höhe, Temperatur, Luftdruck immer;
+  // in einer Aufgabe nur zusätzlich, was sie braucht; in der Übersicht alles.
+  function visibleVars() {
+    const x = cur();
+    if (!x) return { rh: true, v: true, proc: true, lcl: true, all: true };
+    const st = x.st;
+    if (st.show) return Object.fromEntries(st.show.map(k => [k, true]));
+    const txt = [st.title, st.text, st.q.text, ...(st.q.options || []), ...(st.q.items || [])].join(" ").toLowerCase();
+    const has = re => re.test(txt);
+    return {
+      rh: has(/feucht|gesättigt|sättig|taupunkt|kondens/),
+      lcl: has(/wolke|taupunkt/),
+      v: has(/volumen|dehnt|ausdehn|grösse|grösser|quadrat/),
+      proc: has(/adiabatisch|wolke|kondens/)
+    };
+  }
+  // Markiert die aktuellen Werte direkt an den drei Achsen.
+  function drawAxisMarkers(state, px, py, top, bottom, left, right) {
+    ctx.save();
+    ctx.setLineDash([2, 4]); ctx.strokeStyle = "rgba(36,76,98,.35)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, bottom + 22); ctx.stroke();
+    ctx.restore();
+    function tag(text, cx, cy, align, color) {
+      ctx.font = "bold 11px system-ui, sans-serif";
+      const w = ctx.measureText(text).width + 12, h = 19;
+      const x0 = align === "left" ? cx : align === "right" ? cx - w : cx - w / 2;
+      roundRect(x0, cy - h / 2, w, h, 5); ctx.fillStyle = color; ctx.fill();
+      ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(text, x0 + w / 2, cy + .5); ctx.textBaseline = "alphabetic";
+    }
+    tag(Math.round(pressure(state.z)) + " hPa", right + 3, py, "left", "#16759a");
+    tag(Math.round(state.z) + " m", left - 3, py, "right", "#173247");
+    tag(state.t.toFixed(1) + " °C", px, bottom + 34, "center", "#c64b27");
+  }
+  function drawValueCard(state, px, py, reach, top, bottom, left, right) {
+    const p = pressure(state.z), show = visibleVars();
+    // Höhe, Temperatur und Luftdruck stehen bereits als Markierungen an den Achsen, darum nicht in der Box.
+    const rows = [];
+    if (show.rh) rows.push(["Rel. Feuchte", Math.round(state.rh) + " %", "#15846d"]);
+    if (show.v) rows.push(["Volumen", state.volumeRatio.toFixed(2) + " × V₀", "#7a4fa3"]);
+    if (show.lcl) rows.push(["Wolkenbasis", Math.round(state.lcl) + " m", "#638b9b"]);
+    // Braucht die Aufgabe keine weiteren Werte, gibt es keine Box.
+    if (!rows.length && !show.proc) return;
+    const w = 186, rowH = 19, padX = 11, headH = 26, h = headH + rows.length * rowH + (show.proc ? 30 : 8);
+    let bx = px + reach;
+    if (bx + w > right - 4) bx = px - reach - w;
+    if (bx < left + 4) bx = Math.max(left + 4, Math.min(right - 4 - w, px + reach));
+    let by = Math.max(top - 50, Math.min(height - h - 6, py - h / 2));
+    // Auf schmalen Bildschirmen fest oben rechts, damit die Karte das Paket nicht verdeckt.
+    const docked = width < 560;
+    if (docked) { bx = right - w - 2; by = top + 2; }
+    ctx.save();
+    ctx.shadowColor = "rgba(30,70,90,.16)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+    roundRect(bx, by, w, h, 10);
+    ctx.fillStyle = "rgba(255,255,255,.94)"; ctx.fill();
+    ctx.restore();
+    roundRect(bx, by, w, h, 10);
+    ctx.strokeStyle = "#c5d9e0"; ctx.lineWidth = 1; ctx.stroke();
+    // Verbindungslinie zum Paket
+    const anchorX = bx > px ? bx : bx + w;
+    if (!docked) {
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = "rgba(36,76,98,.45)"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(anchorX, Math.max(by + 12, Math.min(by + h - 12, py))); ctx.lineTo(px + (bx > px ? reach - 14 : -(reach - 14)), py); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#173247"; ctx.font = "bold 12px system-ui, sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(show.all ? "Zustand des Luftpakets" : "Luftpaket", bx + padX, by + 15);
+    ctx.strokeStyle = "#e3eef2"; ctx.beginPath(); ctx.moveTo(bx + padX, by + headH); ctx.lineTo(bx + w - padX, by + headH); ctx.stroke();
+    rows.forEach(([label, value, color], i) => {
+      const ry = by + headH + 11 + i * rowH;
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx + padX + 3, ry, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#557083"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "left";
+      ctx.fillText(label, bx + padX + 12, ry);
+      ctx.fillStyle = "#173247"; ctx.font = "bold 12px system-ui, sans-serif"; ctx.textAlign = "right";
+      ctx.fillText(value, bx + w - padX, ry);
+    });
+    if (!show.proc) { ctx.textBaseline = "alphabetic"; return; }
+    // Vorgang als Badge
+    const badge = state.process, bY = by + h - 15;
+    ctx.font = "bold 11px system-ui, sans-serif";
+    const bw = ctx.measureText(badge).width + 16;
+    const bc = state.process === "feuchtadiabatisch" || state.process === "gesättigter Start" ? ["#e1f3ee", "#15846d"]
+             : state.process === "trockenadiabatisch" ? ["#e3eff8", "#2679ad"] : ["#e5f2f6", "#245a70"];
+    roundRect(bx + padX, bY - 9, bw, 18, 9); ctx.fillStyle = bc[0]; ctx.fill();
+    ctx.fillStyle = bc[1]; ctx.textAlign = "left"; ctx.fillText(badge, bx + padX + 8, bY);
+    ctx.textBaseline = "alphabetic";
+  }
+  function drawCurrentView(state, t0, rh0) {
+    ctx = pressureContext; width = pressureWidth; height = pressureHeight;
+    drawCombined(state, t0, rh0);
+  }
+  function update() {
+    if (!pressureWidth || !pressureHeight) return;
+    const z=Number(altitude.value), rh0=Number(humidity.value), t0=Number(temperature.value);
+    const s=parcelState(z,t0,rh0);
+    altitudeValue.textContent=z+" m ü. M.";
+    humidityValue.textContent=rh0+" %";
+    temperatureValue.textContent=t0+" °C";
+    tempReadout.textContent=s.t.toFixed(1)+" °C";
+    rhReadout.textContent=Math.round(s.rh)+" %";
+    volumeReadout.textContent=s.volumeRatio.toFixed(2)+" × Startvolumen";
+    pressureReadout.textContent=Math.round(pressure(z))+" hPa";
+    processReadout.textContent=s.process;
+    cloudReadout.textContent=Math.round(s.lcl)+" m ü. M.";
+
+    drawCurrentView(s,t0,rh0);
+    // Aufträge werden erst geprüft, wenn der Regler kurz still steht.
+    // So zählt ein Wert, über den man beim Ziehen nur hinwegfährt, nicht.
+    settled = false;
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => { settled = true; checkTaskGoal(currentCtx()); update0(); }, 450);
+  }
+  let settled = true, settleTimer = null;
+
+  // ---------------- Geführte Aufgaben ----------------
+  const fmt = (v, d = 1) => v.toFixed(d).replace(".", ",");
+  // Prüft, ob die vorgegebenen Werte unverändert sind, und erzeugt einen Hinweis, falls nicht.
+  const fixedOk = (c, p) => (p.t === undefined || c.t0 === p.t) && (p.h === undefined || c.rh0 === p.h);
+  const fixedNote = (c, p) => {
+    const n = [];
+    if (p.t !== undefined && c.t0 !== p.t) n.push(`Starttemperatur zurück auf ${p.t} °C`);
+    if (p.h !== undefined && c.rh0 !== p.h) n.push(`Startfeuchtigkeit zurück auf ${p.h} %`);
+    return n.length ? " · Bitte " + n.join(" und ") + " stellen" : "";
+  };
+  const zText = (c, zt) => `Höhe genau ${zt} m ${c.z === zt ? "✓" : "✗ (jetzt " + c.z + " m)"}`;
+
+  // ===== Übungsteil: Kapitel =====
+  const chapters = [
+    { id: "druck", name: "Luftdruck", steps: [
+      {
+        title: "Vorhersage: Luftdruck",
+        text: "Bevor du etwas veränderst: Das Luftpaket steigt von 500 m auf 3000 m ü. M.",
+        q: { type: "mc", text: "Was passiert mit dem Luftdruck rund um das Paket?",
+             options: ["Er nimmt zu.", "Er bleibt gleich.", "Er nimmt ab."], correct: 2 },
+        explain: () => "Je höher das Paket ist, desto weniger Luft liegt über ihm. Darum nimmt der Luftdruck mit der Höhe ab."
+      },
+      {
+        title: "Luftdruck ablesen",
+        text: "Schiebe das Luftpaket mit dem Höhenregler auf <b>1500 m ü. M.</b> (orange Linie im Diagramm).",
+        preset: { z: 500 }, highlight: ["altitude"], target: 1500,
+        goal: c => c.z === 1500,
+        goalText: c => zText(c, 1500),
+        q: { type: "num", text: "Wie gross ist der Luftdruck dort?", unit: "hPa",
+             expect: () => pressure(1500), tol: 5, dec: 0 },
+        explain: () => `Auf 1500 m beträgt der Druck etwa ${Math.round(pressure(1500))} hPa – rund ${Math.round(pressure(500) - pressure(1500))} hPa weniger als beim Start.`
+      },
+      {
+        title: "Die Punkte im Hintergrund",
+        text: "Schau dir die blauen Punkte im Hintergrund des Diagramms an – unten und oben.",
+        q: { type: "mc", text: "Was stellen die Punkte dar?",
+             options: ["Wassertröpfchen einer Wolke.", "Luftteilchen: Unten liegen sie dichter beieinander, darum ist der Druck dort höher.", "Staub, der langsam zu Boden sinkt."], correct: 1 },
+        explain: () => "Die Punkte stehen für die Luftteilchen der Umgebung. Unten ist die Luft dichter, weil die ganze Luft darüber auf sie drückt."
+      }
+    ]},
+    { id: "energie", name: "Ausdehnung & innere Energie", steps: [
+      {
+        title: "Weniger Druck von aussen",
+        text: "Schiebe das Paket von 500 m genau auf <b>2000 m</b>. Achte auf die Druckpfeile und auf die Grösse des Quadrats.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["altitude"], target: 2000,
+        goal: c => fixedOk(c, { t: 20, h: 70 }) && c.z === 2000,
+        goalText: c => zText(c, 2000) + fixedNote(c, { t: 20, h: 70 }),
+        q: { type: "mc", text: "Der Umgebungsdruck nimmt ab. Was macht das Luftpaket?",
+             options: ["Es wird zusammengedrückt.", "Es dehnt sich aus.", "Seine Grösse bleibt gleich."], correct: 1 },
+        explain: () => "Die Luft im Paket drückt jetzt stärker nach aussen, als die Umgebung von aussen drückt. Das Paket dehnt sich aus, bis innen und aussen der gleiche Druck herrscht."
+      },
+      {
+        title: "Arbeit und innere Energie",
+        text: "Beim Ausdehnen schiebt das Paket die Umgebungsluft zur Seite – es verrichtet <b>Arbeit</b>. Wärme von aussen bekommt es dabei nicht (adiabatisch).",
+        q: { type: "mc", text: "Was passiert mit der inneren Energie des Luftpakets?",
+             options: ["Sie nimmt zu.", "Sie nimmt ab.", "Sie bleibt gleich."], correct: 1 },
+        explain: () => "Die Energie für die Arbeit muss aus dem Paket selbst kommen. Darum nimmt seine innere Energie ab."
+      },
+      {
+        title: "Wie «gestresst» sind die Teilchen?",
+        text: "Das Paket steht auf 500 m. Beobachte die Teilchen im Quadrat. Schiebe es dann genau auf <b>3000 m</b> und vergleiche.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["altitude"], target: 3000,
+        goal: (c, m) => {
+          if (!fixedOk(c, { t: 20, h: 70 })) return false;
+          if (c.z === 500) m.seen.a = true;
+          if (c.z === 3000) m.seen.b = true;
+          return m.seen.a && m.seen.b;
+        },
+        goalText: (c, m) => `500 m beobachtet ${m.seen.a ? "✓" : "✗"} · 3000 m beobachtet ${m.seen.b ? "✓" : "✗"}` + fixedNote(c, { t: 20, h: 70 }),
+        q: { type: "mc", text: "Wie bewegen sich die Teilchen auf 3000 m im Vergleich zu 500 m?",
+             options: ["Schneller – sie sind «gestresster».", "Langsamer – sie sind «entspannter».", "Gleich schnell."], correct: 1 },
+        explain: () => "Weniger innere Energie bedeutet weniger Bewegungsenergie: Die Teilchen bewegen sich langsamer. (Die Bewegung ist in der Simulation verstärkt dargestellt.)"
+      },
+      {
+        title: "Folge für die Temperatur",
+        text: "Die Teilchen bewegen sich im Mittel langsamer.",
+        q: { type: "mc", text: "Was bedeutet das für die Temperatur des Pakets?",
+             options: ["Sie steigt.", "Sie sinkt.", "Sie bleibt gleich."], correct: 1 },
+        explain: () => "Die Temperatur ist ein Mass für die mittlere Bewegungsenergie der Teilchen. Langsamere Teilchen bedeuten eine tiefere Temperatur."
+      },
+      {
+        title: "Die Wirkungskette",
+        text: "Fasse zusammen: Klicke die Schritte in der richtigen Reihenfolge an.",
+        q: { type: "order", text: "Was passiert, wenn ein Luftpaket aufsteigt?",
+             items: ["Das Paket steigt auf.", "Der Umgebungsdruck nimmt ab.", "Das Paket dehnt sich aus und verrichtet Arbeit.", "Die innere Energie nimmt ab.", "Die Teilchen bewegen sich langsamer.", "Die Temperatur sinkt."] },
+        explain: () => "Genau diese Kette nennt man adiabatische Abkühlung: Abkühlung durch Ausdehnung, ohne dass Wärme abgegeben wird."
+      },
+      {
+        title: "Das Paket wird grösser",
+        text: "Bewege das Paket auf <b>3000 m</b> und vergleiche das Quadrat mit der roten Startgrösse.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["altitude"], target: 3000,
+        goal: c => c.z === 3000,
+        goalText: c => zText(c, 3000),
+        q: { type: "num", text: "Wie viel Mal grösser ist das Volumen jetzt? (Anzeige «Volumen» ablesen)", unit: "×",
+             expect: snap => snap.s.volumeRatio, tol: .03, dec: 2 },
+        explain: snap => `Das Volumen ist etwa ${fmt(snap.s.volumeRatio, 2)}-mal so gross wie beim Start.`
+      },
+      {
+        title: "Ausdehnen trotz Kälte?",
+        text: "Das Paket ist oben kälter – und trotzdem grösser.",
+        q: { type: "mc", text: "Wie lässt sich das erklären?",
+             options: ["Kalte Luft braucht immer mehr Platz als warme Luft.", "Der Umgebungsdruck nimmt stärker ab, als die Temperatur sinkt.", "In der Höhe kommt neue Luft ins Paket hinein."], correct: 1 },
+        explain: () => "Der Umgebungsdruck sinkt von 955 hPa auf etwa 700 hPa, also um rund ein Viertel. Die Temperatur (in Kelvin) sinkt nur um wenige Prozent. Der Druckeffekt überwiegt – und genau diese Ausdehnung kühlt das Paket ab."
+      }
+    ]},
+    { id: "trocken", name: "Trockenadiabatischer Aufstieg", steps: [
+      {
+        title: "Abkühlung messen",
+        text: "Das Paket startet mit 20 °C und 70 % auf 500 m. Lies die Temperatur ab und schiebe es dann auf <b>1000 m</b>.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["altitude"], target: 1000,
+        goal: c => fixedOk(c, { t: 20, h: 70 }) && c.z === 1000,
+        goalText: c => zText(c, 1000) + fixedNote(c, { t: 20, h: 70 }),
+        q: { type: "num", text: "Um wie viele °C hat sich das Paket zwischen 500 m und 1000 m abgekühlt?", unit: "°C",
+             expect: () => 4.9, tol: .6, dec: 1 },
+        explain: () => "Etwa 5 °C auf 500 m, also rund 1 °C pro 100 m."
+      },
+      {
+        title: "Die Faustregel",
+        text: "Verallgemeinere dein Messergebnis.",
+        q: { type: "mc", text: "Wie stark kühlt ungesättigte Luft beim Aufsteigen ab?",
+             options: ["Etwa 0,5 °C pro 100 m.", "Etwa 1 °C pro 100 m.", "Etwa 2 °C pro 100 m."], correct: 1 },
+        explain: () => "Trockenadiabatisch kühlt die Luft um etwa 1 °C pro 100 m ab – beim Absinken erwärmt sie sich um gleich viel."
+      },
+      {
+        title: "Was heisst «trocken»?",
+        text: "Der Name «trockenadiabatisch» führt oft in die Irre.",
+        q: { type: "mc", text: "Was bedeutet «trocken» hier?",
+             options: ["Die Luft enthält gar keinen Wasserdampf.", "Die Luft ist nicht gesättigt – es kondensiert kein Wasser.", "Es regnet gerade nicht."], correct: 1 },
+        explain: () => "Auch «trockene» Luft enthält Wasserdampf. Entscheidend ist, dass sie noch nicht gesättigt ist und darum nichts kondensiert."
+      },
+      {
+        title: "Rechnen ohne Simulation",
+        text: "Ein ungesättigtes Luftpaket hat auf 500 m eine Temperatur von 16 °C.",
+        q: { type: "num", text: "Welche Temperatur hat es auf 1400 m?", unit: "°C",
+             expect: () => 7, tol: .4, dec: 1 },
+        explain: () => "900 m Aufstieg × 1 °C pro 100 m = 9 °C Abkühlung: 16 °C − 9 °C = 7 °C."
+      }
+    ]},
+    { id: "wolken", name: "Wolkenbildung & feuchtadiabatisch", steps: [
+      {
+        title: "Wo bildet sich die Wolke?",
+        text: "Jetzt bewegst du nur die Startfeuchtigkeit. Stelle sie einmal genau auf <b>40 %</b> und einmal genau auf <b>90 %</b>. Beobachte dabei die gestrichelte Wolkenbasis.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["humidity"],
+        goal: (c, m) => {
+          if (c.t0 === 20 && c.rh0 === 40) m.seen.a = true;
+          if (c.t0 === 20 && c.rh0 === 90) m.seen.b = true;
+          return m.seen.a && m.seen.b;
+        },
+        goalText: (c, m) => `40 % eingestellt ${m.seen.a ? "✓" : "✗"} · 90 % eingestellt ${m.seen.b ? "✓" : "✗"}` + fixedNote(c, { t: 20 }),
+        q: { type: "mc", text: "Bei feuchter Luft (90 %) liegt die Wolkenbasis …",
+             options: ["… höher.", "… tiefer.", "… gleich hoch."], correct: 1 },
+        explain: () => "Feuchte Luft ist schon fast gesättigt. Sie muss nur wenig abkühlen, bis der Taupunkt erreicht ist – die Wolke bildet sich darum tiefer."
+      },
+      {
+        title: "An der Wolkenbasis",
+        text: "Schiebe das Paket langsam nach oben, bis es die Wolkenbasis erreicht hat und das Quadrat blau wird. Achte auf die relative Luftfeuchtigkeit.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["altitude"],
+        goal: c => fixedOk(c, { t: 20, h: 70 }) && c.z >= c.s.lcl,
+        goalText: c => (c.z >= c.s.lcl ? "In der Wolke ✓" : "Das Paket ist noch unter der Wolkenbasis") + fixedNote(c, { t: 20, h: 70 }),
+        q: { type: "mc", text: "Was gilt an der Wolkenbasis?",
+             options: ["Der Luftdruck ist null.", "Die relative Luftfeuchtigkeit erreicht 100 % – Wasserdampf kondensiert.", "Die Temperatur ist genau 0 °C."], correct: 1 },
+        explain: () => "Das Paket hat sich bis zum Taupunkt abgekühlt. Die Luft ist gesättigt, und Wasserdampf kondensiert zu Wolkentröpfchen."
+      },
+      {
+        title: "In der Wolke",
+        text: "Die Werte sind auf 20 °C und 90 % gesetzt. Schiebe das Paket mit dem Höhenregler mindestens 500 m über die Wolkenbasis. Achte auf den Knick in der Kurve.",
+        preset: { z: 500, t: 20, h: 90 }, highlight: ["altitude"],
+        goal: c => fixedOk(c, { t: 20, h: 90 }) && c.z >= c.s.lcl + 500,
+        goalText: c => (c.z >= c.s.lcl + 500 ? "Höhe ✓" : "noch " + Math.ceil((c.s.lcl + 500 - c.z) / 50) * 50 + " m höher") + fixedNote(c, { t: 20, h: 90 }),
+        q: { type: "mc", text: "Warum kühlt das Paket oberhalb der Wolkenbasis nur noch mit etwa 0,5 °C pro 100 m ab?",
+             options: ["Weil der Luftdruck in der Wolke wieder steigt.", "Weil beim Kondensieren von Wasserdampf Wärme frei wird.", "Weil die Sonne die Wolke von oben erwärmt."], correct: 1 },
+        explain: () => "Beim Kondensieren wird die Wärme frei, die vorher zum Verdunsten nötig war (Kondensationswärme). Sie bremst die Abkühlung: feuchtadiabatisch statt trockenadiabatisch."
+      },
+      {
+        title: "Rechnen in der Wolke",
+        text: "Ein gesättigtes Luftpaket steigt in einer Wolke um 1000 m auf.",
+        q: { type: "num", text: "Um wie viele °C kühlt es dabei ungefähr ab?", unit: "°C",
+             expect: () => 5, tol: .6, dec: 1 },
+        explain: () => "Feuchtadiabatisch etwa 0,5 °C pro 100 m: 1000 m × 0,5 °C / 100 m = 5 °C."
+      }
+    ]},
+    { id: "foehn", name: "Föhn", steps: [
+      {
+        title: "Föhn berechnen",
+        text: "Jetzt stellst du alle drei Regler selbst ein. Feuchte Luft strömt von Süden gegen die Alpen. Stelle <b>15 °C</b> und <b>70 %</b> ein und hebe das Paket auf den Alpenkamm (<b>3000 m</b>). Auf der Nordseite sinkt die Luft wieder auf 500 m. Sie ist jetzt trocken und erwärmt sich mit 1 °C pro 100 m.",
+        preset: { z: 500, t: 20, h: 50 }, highlight: ["temperature", "humidity", "altitude"], target: 3000,
+        goal: c => c.t0 === 15 && c.rh0 === 70 && c.z === 3000,
+        goalText: c => `Temperatur ${c.t0 === 15 ? "✓" : "✗"} · Feuchtigkeit ${c.rh0 === 70 ? "✓" : "✗"} · Höhe ${c.z === 3000 ? "✓" : "✗"}`,
+        q: { type: "num", text: "Wie warm kommt die Luft auf der Nordseite auf 500 m an?", unit: "°C",
+             expect: snap => snap.s.t + 25, tol: 1, dec: 1 },
+        explain: snap => `Auf dem Kamm hat das Paket ${fmt(snap.s.t)} °C. Beim Absinken um 2500 m erwärmt es sich um 25 °C auf etwa ${fmt(snap.s.t + 25)} °C – rund ${fmt(snap.s.t + 25 - 15)} °C wärmer als im Süden.`
+      },
+      {
+        title: "Warum wärmer?",
+        text: "Die Luft ist auf der Nordseite deutlich wärmer als vorher auf der Südseite.",
+        q: { type: "mc", text: "Woher kommt dieser Unterschied?",
+             options: ["Die Luft reibt an den Bergen und wird dadurch warm.", "Beim Aufstieg kühlt sie in der Wolke nur langsam ab, beim Abstieg erwärmt sie sich trocken mit 1 °C pro 100 m.", "Auf der Nordseite scheint die Sonne stärker."], correct: 1 },
+        explain: () => "Aufstieg teilweise feuchtadiabatisch (≈0,5 °C/100 m), Abstieg trockenadiabatisch (≈1 °C/100 m) – diese Asymmetrie macht den Föhn warm."
+      },
+      {
+        title: "Wohin geht das Wasser?",
+        text: "Beim Aufstieg auf der Südseite ist Wasserdampf kondensiert.",
+        q: { type: "mc", text: "Was passiert mit diesem Wasser?",
+             options: ["Es regnet auf der Alpensüdseite aus – darum ist die Föhnluft im Norden trocken.", "Es wird mit der Luft nach Norden getragen und regnet dort aus.", "Es verschwindet einfach."], correct: 0 },
+        explain: () => "Das kondensierte Wasser fällt auf der Luvseite (Süden) als Niederschlag. Im Norden kommt warme, trockene Föhnluft an."
+      }
+    ]},
+    { id: "profi", name: "★ Zusatz: Für Profis", extra: true, steps: [
+      {
+        title: "Silvester 2022 in Delsberg",
+        text: "An Silvester 2022 mass MeteoSchweiz in Delsberg (Jura) <b>20,9 °C</b> – der höchste Wert im ganzen Messnetz. In den typischen Föhntälern wurden «nur» etwas über 17 °C erreicht.",
+        q: { type: "mc", text: "Was war in Delsberg vor allem für die Wärme verantwortlich?",
+             options: ["Sehr milde subtropische Luft aus Südwesten – Delsberg liegt nicht in einem Föhntal.", "Ein starker Südföhn, der direkt in den Jura blies.", "Die Wintersonne, die den Boden stark aufheizte."], correct: 0 },
+        explain: () => "Nördlich der Alpen brachte warme Subtropikluft verbreitet 14 bis 16 °C. Der Föhn verstärkte die Wärme nur in den Föhntälern zusätzlich. Wärme kann also auch ohne Föhn «herantransportiert» werden.",
+        source: [["MeteoSchweiz, Klimabulletin 2023", "https://www.meteoschweiz.admin.ch/dam/jcr:45474041-94e1-4c9d-a39d-966ced347118/Klimabulletin-Jahr-2023-de.pdf"],
+                 ["SRF Meteo: Erstmals über 20 Grad an Silvester", "https://www.srf.ch/meteo/meteo-stories/extrem-milder-jahreswechsel-erstmals-20-grad-an-silvester"]]
+      },
+      {
+        title: "Föhndiagnose: Lugano – Zürich",
+        text: "Meteorologen vergleichen den Luftdruck in Lugano und Zürich. Ist er in Lugano um etwa <b>4 hPa</b> oder mehr höher, ist Südföhn wahrscheinlich. Ist er in Zürich deutlich höher, droht Nordföhn. An einem Tag misst man: <b>Lugano 1015 hPa</b>, <b>Zürich 1021 hPa</b>.",
+        q: { type: "num", text: "Wie gross ist die Druckdifferenz Lugano − Zürich? (Achte auf das Vorzeichen.)", unit: "hPa",
+             expect: () => -6, tol: .1, dec: 0 },
+        explain: () => "1015 − 1021 = −6 hPa. Das negative Vorzeichen zeigt: Der Druck ist im Norden höher.",
+        source: [["MeteoSchweiz-Blog: Vor dem Schnee hat sich der Föhn eingeschaltet", "https://www.meteoschweiz.admin.ch/ueber-uns/meteoschweiz-blog/de/2022/11/vor-dem-schnee-hat-sich-der-foehn-eingeschaltet.html"]]
+      },
+      {
+        title: "Welcher Föhn?",
+        text: "Die Druckdifferenz Lugano − Zürich beträgt −6 hPa.",
+        q: { type: "mc", text: "Welche Wetterlage erwartest du?",
+             options: ["Südföhn nördlich der Alpen.", "Nordföhn im Tessin – die Luft strömt von Norden nach Süden.", "Kein Föhn, weil die Differenz negativ ist."], correct: 1 },
+        explain: () => "Luft strömt vom hohen zum tiefen Druck. Hier liegt der hohe Druck im Norden: Die Luft steigt auf der Alpennordseite auf und fällt im Tessin als warmer, trockener Nordföhn herab."
+      },
+      {
+        title: "Der Jahrhundertföhn 1982",
+        text: "Beim «Jahrhundertföhn» vom 7./8. November 1982 betrug die Druckdifferenz über die Alpen <b>24 hPa</b> – ein Rekordwert.",
+        q: { type: "mc", text: "Was folgt aus einem so grossen Druckgefälle?",
+             options: ["Die Strömung wird sehr stark – es drohen Föhnstürme.", "Der Föhn wird automatisch viel wärmer, aber nicht stärker.", "Es regnet vor allem auf der Alpennordseite."], correct: 0 },
+        explain: () => "Je grösser das Druckgefälle, desto stärker will die Luft den Druck ausgleichen – die Windgeschwindigkeit nimmt zu. Die Erwärmung hängt dagegen von den adiabatischen Vorgängen ab.",
+        source: [["Jansing et al. (ETH Zürich / MeteoSchweiz), Weather Clim. Dynam. Discuss.", "https://wcd.copernicus.org/preprints/wcd-2022-24/wcd-2022-24-ATC1.pdf"]]
+      },
+      {
+        title: "Die 125-Meter-Faustformel",
+        text: "Piloten und Meteorologen schätzen die Wolkenbasis so: <b>(Temperatur − Taupunkt) × 125 = Höhe der Wolkenbasis in m über Boden</b>. In Bad Ragaz (rund 500 m ü. M.) misst man 24 °C, der Taupunkt beträgt 14 °C.",
+        q: { type: "num", text: "Auf welcher Höhe über Meer liegt die Wolkenbasis ungefähr?", unit: "m ü. M.",
+             expect: () => 1750, tol: 20, dec: 0 },
+        explain: () => "(24 − 14) × 125 = 1250 m über Boden. Dazu kommen die 500 m der Station: rund 1750 m ü. M. Übrigens: Die Simulation berechnet ihre Wolkenbasis genau mit dieser Formel.",
+        source: [["SRF Meteo: Wann stecke ich in den Quellwolken?", "https://www.srf.ch/meteo/meteo-stories/ausflug-in-die-berge-wann-stecke-ich-in-den-quellwolken"]]
+      },
+      {
+        title: "Warum gerade 125?",
+        text: "Beim Aufsteigen kühlt das Paket um etwa 1 °C pro 100 m ab. Auch sein Taupunkt sinkt, aber viel langsamer – um rund 0,2 °C pro 100 m.",
+        q: { type: "mc", text: "Woher kommt die Zahl 125?",
+             options: ["Temperatur und Taupunkt nähern sich um 0,8 °C pro 100 m. Für 1 °C Abstand braucht es 100 m ÷ 0,8 = 125 m.", "125 m ist die Höhe, bei der der Luftdruck um 1 hPa abnimmt.", "Die Zahl wurde durch Messungen festgelegt und hat keine physikalische Begründung."], correct: 0 },
+        explain: () => "Pro 100 m schrumpft der Abstand (Spread) um 1 °C − 0,2 °C = 0,8 °C. Ist der Spread null, ist die Luft gesättigt und die Wolke beginnt. Die Formel gilt nur für Quellwolken, nicht für Schichtwolken."
+      },
+      {
+        title: "0,5 °C ist eine Vereinfachung",
+        text: "Im Arbeitsblatt rechnest du feuchtadiabatisch mit 0,5 °C pro 100 m. In Wirklichkeit liegt der Wert je nach Luftmasse zwischen etwa <b>0,4 und 0,9 °C pro 100 m</b>.",
+        q: { type: "mc", text: "In welcher Luft ist der feuchtadiabatische Gradient am kleinsten?",
+             options: ["In sehr kalter Luft.", "In warmer, feuchter Luft – dort kondensiert beim Aufsteigen besonders viel Wasserdampf.", "Bei besonders hohem Luftdruck."], correct: 1 },
+        explain: () => "Warme Luft enthält viel mehr Wasserdampf. Beim Aufsteigen kondensiert mehr davon, es wird mehr Kondensationswärme frei – die Abkühlung wird stärker gebremst. In sehr kalter Luft gibt es kaum Wasserdampf, der Wert nähert sich 1 °C pro 100 m.",
+        source: [["wetter.net: Abnahme der Temperatur mit der Höhe", "https://wetter.net/wetterlexikon/eintrag/abnahme-der-temperatur-mit-der-hoehe"]]
+      },
+      {
+        title: "Föhn mit anderem Gradienten",
+        text: "Ein Paket startet mit 16 °C auf 500 m. Die Wolkenbasis liegt auf 1000 m, der Kamm auf 3000 m. Danach sinkt die Luft trocken auf 400 m ab. Mit 0,5 °C pro 100 m in der Wolke käme die Luft mit 27 °C unten an.",
+        q: { type: "num", text: "Wie warm kommt die Luft auf 400 m an, wenn du in der Wolke mit 0,6 °C pro 100 m rechnest?", unit: "°C",
+             expect: () => 25, tol: .5, dec: 1 },
+        explain: () => "500 → 1000 m: 16 − 5 = 11 °C. 1000 → 3000 m: 11 − 2000 × 0,6/100 = −1 °C. 3000 → 400 m: −1 + 26 = 25 °C. Schon 0,1 °C Unterschied pro 100 m verändert das Ergebnis um 2 °C."
+      },
+      {
+        title: "Gasgesetz mit Kelvin",
+        text: "Für ein Luftpaket gilt: <b>V₂ / V₁ = (p₁ / p₂) · (T₂ / T₁)</b>, mit T in Kelvin. Auf 500 m: p₁ = 955 hPa, T₁ = 20 °C. Auf 3000 m: p₂ = 701 hPa, T₂ = −5 °C.",
+        q: { type: "num", text: "Um welchen Faktor hat sich das Volumen vergrössert?", unit: "×",
+             expect: () => (955 / 701) * (268.15 / 293.15), tol: .02, dec: 2 },
+        explain: () => `T₁ = 293,15 K, T₂ = 268,15 K. V₂/V₁ = (955/701) · (268,15/293,15) ≈ 1,36 · 0,915 ≈ ${fmt((955 / 701) * (268.15 / 293.15), 2)}. Der Druckfaktor gewinnt gegen den Temperaturfaktor – das Paket wird grösser, obwohl es abkühlt.`
+      },
+      {
+        title: "Warum Kelvin?",
+        text: "Jemand rechnet dieselbe Aufgabe mit °C: T₂ / T₁ = −5 / 20.",
+        q: { type: "mc", text: "Was ist das Problem?",
+             options: ["Es gibt kein Problem, °C und K sind gleichwertig.", "Das Ergebnis wäre negativ – ein negatives Volumen ist unmöglich. Gasgesetze brauchen die absolute Temperatur.", "Man müsste die °C-Werte nur noch durch 100 teilen."], correct: 1 },
+        explain: () => "Die Kelvin-Skala beginnt am absoluten Nullpunkt, wo sich die Teilchen nicht mehr bewegen. Nur Verhältnisse in Kelvin geben an, wie viel «Teilchenbewegung» tatsächlich vorhanden ist. Für Temperatur-Differenzen spielt es dagegen keine Rolle: 1 K = 1 °C Unterschied."
+      },
+      {
+        title: "Paket gegen Umgebung",
+        text: "Die Umgebungsluft wird nach oben im Mittel um etwa <b>0,65 °C pro 100 m</b> kälter. Ein ungesättigtes Paket hat am Boden dieselbe Temperatur wie seine Umgebung und wird 1000 m angehoben.",
+        q: { type: "num", text: "Um wie viele °C ist das Paket dann kälter als seine Umgebung?", unit: "°C",
+             expect: () => 3.5, tol: .3, dec: 1 },
+        explain: () => "Paket: −10 °C (trockenadiabatisch), Umgebung: −6,5 °C. Das Paket ist 3,5 °C kälter.",
+        source: [["MeteoSwiss: Decreases in temperature with altitude", "https://www.meteoswiss.admin.ch/weather/weather-and-climate-from-a-to-z/temperature/decreases-in-temperature-with-altitude.html"]]
+      },
+      {
+        title: "Stabile Schichtung",
+        text: "Das Paket ist kälter und damit dichter als die Luft rundherum.",
+        q: { type: "mc", text: "Was passiert, wenn es nicht mehr nach oben gezwungen wird?",
+             options: ["Es steigt immer schneller weiter.", "Es sinkt wieder zurück – die Schichtung ist stabil.", "Es bleibt in dieser Höhe stehen."], correct: 1 },
+        explain: () => "Ist die Umgebung weniger als 1 °C pro 100 m kälter, spricht man von stabiler Schichtung: Ein ungesättigtes Paket sinkt von allein zurück. Darum braucht es beim Föhn das Gebirge, das die Luft zum Aufsteigen zwingt.",
+        source: [["wetter.at Lexikon: Temperaturgradient", "https://www.wetter.at/wetter/news-wissen/lexikon/7163702/temperaturgradient"]]
+      },
+      {
+        title: "Weltrekord durch Föhnwind",
+        text: "Auch in Nordamerika gibt es Föhn: Den Chinook an der Ostseite der Rocky Mountains. Am 14./15. Januar 1972 stieg die Temperatur in Loma (Montana) innert 24 Stunden von <b>−47,8 °C</b> auf <b>9,4 °C</b>.",
+        q: { type: "num", text: "Um wie viele Kelvin stieg die Temperatur?", unit: "K",
+             expect: () => 57.2, tol: .3, dec: 1 },
+        explain: () => "9,4 − (−47,8) = 57,2 K. Das ist bis heute der Weltrekord für die grösste Temperaturänderung innerhalb von 24 Stunden. Eine Differenz ist in Kelvin und °C gleich gross.",
+        source: [["Guinness World Records: Greatest temperature range in a day", "https://www.guinnessworldrecords.com/world-records/greatest-temperature-range-in-day"],
+                 ["NOAA: A National Temperature Record at Loma, Montana", "https://www.ncdc.noaa.gov/monitoring-content/extremes/ncec/reports/lomamontana.pdf"]]
+      }
+    ]}
+  ];
+
+  // ===== Abschlusstest: Fragenpool pro Kategorie (neue Fragen, nicht aus dem Übungsteil) =====
+  const testPool = {
+    druck: [
+      {
+        title: "Luftdruck auf 2500 m",
+        text: "Schiebe das Paket genau auf <b>2500 m</b>.",
+        preset: { z: 500 }, highlight: ["altitude"], target: 2500,
+        goal: c => c.z === 2500, goalText: c => zText(c, 2500),
+        q: { type: "num", text: "Wie gross ist der Luftdruck dort?", unit: "hPa", expect: () => pressure(2500), tol: 5, dec: 0 },
+        explain: () => `Auf 2500 m beträgt der Luftdruck etwa ${Math.round(pressure(2500))} hPa.`
+      },
+      {
+        title: "Ursache des Luftdrucks",
+        q: { type: "mc", text: "Warum nimmt der Luftdruck mit der Höhe ab?",
+             options: ["Weil es oben kälter ist.", "Weil weniger Luft darüber liegt, die nach unten drückt.", "Weil man näher an der Sonne ist."], correct: 1 },
+        explain: () => "Der Luftdruck entsteht durch das Gewicht der Luftsäule darüber. Je höher, desto kürzer die Säule."
+      },
+      {
+        title: "Grössenordnung",
+        q: { type: "mc", text: "Um wie viel nimmt der Luftdruck zwischen 500 m und 3000 m ungefähr ab?",
+             options: ["Um etwa 10 %.", "Um etwa 25 %.", "Um etwa 75 %."], correct: 1 },
+        explain: () => `Von ${Math.round(pressure(500))} hPa auf ${Math.round(pressure(3000))} hPa – also um gut ein Viertel.`
+      }
+    ],
+    energie: [
+      {
+        title: "Wirkungskette beim Absinken",
+        q: { type: "order", text: "Ein Luftpaket sinkt ab. Bringe die Schritte in die richtige Reihenfolge.",
+             items: ["Das Paket sinkt ab.", "Der Umgebungsdruck nimmt zu.", "Das Paket wird zusammengedrückt, die Umgebung verrichtet Arbeit am Paket.", "Die innere Energie nimmt zu.", "Die Teilchen bewegen sich schneller.", "Die Temperatur steigt."] },
+        explain: () => "Beim Absinken läuft die Kette umgekehrt ab: Kompression erhöht die innere Energie – das Paket erwärmt sich."
+      },
+      {
+        title: "Adiabatisch",
+        q: { type: "mc", text: "Was bedeutet «adiabatisch»?",
+             options: ["Die Temperatur bleibt konstant.", "Es wird keine Wärme mit der Umgebung ausgetauscht.", "Der Druck bleibt konstant."], correct: 1 },
+        explain: () => "Adiabatisch heisst: ohne Wärmeaustausch mit der Umgebung. Die Temperatur ändert sich nur durch Ausdehnung oder Kompression."
+      },
+      {
+        title: "Teilchen beim Absinken",
+        q: { type: "mc", text: "Ein Luftpaket sinkt ab. Wie bewegen sich seine Teilchen danach?",
+             options: ["Schneller, weil das Paket zusammengedrückt wird und seine innere Energie zunimmt.", "Langsamer, weil die Luft unten dichter ist.", "Gleich schnell, weil keine Wärme zugeführt wird."], correct: 0 },
+        explain: () => "Die Umgebung verrichtet Arbeit am Paket. Die innere Energie nimmt zu, die Teilchen werden schneller – das Paket wird wärmer."
+      }
+    ],
+    trocken: [
+      {
+        title: "Rechnen: Aufstieg",
+        q: { type: "num", text: "Ein ungesättigtes Paket hat auf 500 m 18 °C. Welche Temperatur hat es auf 1300 m?", unit: "°C", expect: () => 10, tol: .5, dec: 1 },
+        explain: () => "800 m × 1 °C pro 100 m = 8 °C Abkühlung: 18 °C − 8 °C = 10 °C."
+      },
+      {
+        title: "Abkühlung messen",
+        text: "Die Werte sind auf 25 °C und 30 % gesetzt. Schiebe das Paket genau auf <b>2000 m</b>.",
+        preset: { z: 500, t: 25, h: 30 }, highlight: ["altitude"], target: 2000,
+        goal: c => fixedOk(c, { t: 25, h: 30 }) && c.z === 2000,
+        goalText: c => zText(c, 2000) + fixedNote(c, { t: 25, h: 30 }),
+        q: { type: "num", text: "Um wie viele °C hat sich das Paket seit dem Start abgekühlt?", unit: "°C", expect: snap => 25 - snap.s.t, tol: .8, dec: 1 },
+        explain: snap => `Etwa ${fmt(25 - snap.s.t)} °C auf 1500 m – rund 1 °C pro 100 m.`
+      },
+      {
+        title: "Absinken",
+        q: { type: "mc", text: "Ein ungesättigtes Paket sinkt von 2000 m auf 1000 m. Was passiert?",
+             options: ["Es erwärmt sich um etwa 10 °C.", "Es erwärmt sich um etwa 5 °C.", "Es kühlt sich um etwa 10 °C ab."], correct: 0 },
+        explain: () => "Beim Absinken wird das Paket komprimiert und erwärmt sich trockenadiabatisch um etwa 1 °C pro 100 m."
+      }
+    ],
+    wolken: [
+      {
+        title: "Wolkenbasis bestimmen",
+        text: "Stelle die Startfeuchtigkeit genau auf <b>60 %</b>.",
+        preset: { z: 500, t: 20, h: 70 }, highlight: ["humidity"],
+        goal: c => c.t0 === 20 && c.rh0 === 60,
+        goalText: c => `Feuchtigkeit genau 60 % ${c.rh0 === 60 ? "✓" : "✗ (jetzt " + c.rh0 + " %)"}` + fixedNote(c, { t: 20 }),
+        q: { type: "num", text: "Auf welcher Höhe liegt jetzt die Wolkenbasis?", unit: "m ü. M.", expect: snap => snap.s.lcl, tol: 30, dec: 0 },
+        explain: snap => `Die Wolkenbasis liegt bei etwa ${Math.round(snap.s.lcl)} m ü. M.`
+      },
+      {
+        title: "Aufstieg in der Wolke",
+        q: { type: "mc", text: "Ein gesättigtes Paket steigt von 1500 m auf 2500 m. Um wie viel kühlt es ungefähr ab?",
+             options: ["Um etwa 10 °C.", "Um etwa 5 °C.", "Gar nicht."], correct: 1 },
+        explain: () => "Feuchtadiabatisch etwa 0,5 °C pro 100 m – auf 1000 m also etwa 5 °C."
+      },
+      {
+        title: "Tiefe Wolken",
+        q: { type: "mc", text: "Wann bildet sich die Wolke beim Aufsteigen besonders tief?",
+             options: ["Wenn die Luft sehr trocken ist.", "Wenn Temperatur und Taupunkt nahe beieinander liegen (feuchte Luft).", "Wenn der Luftdruck besonders hoch ist."], correct: 1 },
+        explain: () => "Je kleiner der Abstand zwischen Temperatur und Taupunkt, desto weniger muss das Paket abkühlen, bis es gesättigt ist."
+      }
+    ],
+    foehn: [
+      {
+        title: "Föhn berechnen",
+        text: "Stelle <b>10 °C</b> und <b>80 %</b> ein und hebe das Paket genau auf <b>2500 m</b>. Danach sinkt es auf der anderen Seite trockenadiabatisch auf 500 m.",
+        preset: { z: 500, t: 20, h: 50 }, highlight: ["temperature", "humidity", "altitude"], target: 2500,
+        goal: c => c.t0 === 10 && c.rh0 === 80 && c.z === 2500,
+        goalText: c => `Temperatur ${c.t0 === 10 ? "✓" : "✗"} · Feuchtigkeit ${c.rh0 === 80 ? "✓" : "✗"} · Höhe ${c.z === 2500 ? "✓" : "✗"}`,
+        q: { type: "num", text: "Wie warm kommt die Luft unten an?", unit: "°C", expect: snap => snap.s.t + 20, tol: 1, dec: 1 },
+        explain: snap => `Oben ${fmt(snap.s.t)} °C, beim Absinken um 2000 m +20 °C: etwa ${fmt(snap.s.t + 20)} °C.`
+      },
+      {
+        title: "Wo regnet es?",
+        q: { type: "mc", text: "Bei Südföhn: Auf welcher Seite der Alpen regnet es?",
+             options: ["Auf der Alpennordseite.", "Auf der Alpensüdseite.", "Auf beiden Seiten gleich stark."], correct: 1 },
+        explain: () => "Die Luft steigt auf der Südseite (Luv) auf, kondensiert und regnet dort aus."
+      },
+      {
+        title: "Föhnluft",
+        q: { type: "mc", text: "Welche Aussage über die Föhnluft auf der Alpennordseite stimmt?",
+             options: ["Sie ist warm und trocken.", "Sie ist kalt und feucht.", "Sie ist warm und feucht."], correct: 0 },
+        explain: () => "Die Luft hat ihr Wasser im Süden verloren und sich beim Absinken stark erwärmt."
+      }
+    ]
+  };
+  const TEST_PER_CATEGORY = 2;
+  chapters.forEach(ch => ch.steps.forEach(s => s.cat = ch.id));
+  Object.entries(testPool).forEach(([cat, list]) => list.forEach(s => s.cat = cat));
+  const catName = id => chapters.find(c => c.id === id).name;
+
+  const taskContent = document.getElementById("taskContent");
+  const taskBar = document.getElementById("taskBar");
+  const taskCount = document.getElementById("taskCount");
+  const taskPrev = document.getElementById("taskPrev");
+  const taskNext = document.getElementById("taskNext");
+  const taskNav = document.getElementById("taskNav");
+  const taskProgress = document.getElementById("taskProgress");
+  const taskBody = document.getElementById("taskBody");
+  const taskToggle = document.getElementById("taskToggle");
+  const taskMenu = document.getElementById("taskMenu");
+
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const newMem = st => ({ goalDone: false, tries: 0, solved: false, revealed: false, firstTry: false, snap: null, seen: {}, wrong: [],
+                          order: [], pool: st.q.type === "order" ? shuffle(st.q.items.map((_, i) => i)) : null,
+                          answered: false, correct: false, given: "" });
+  let chapterMem = chapters.map(ch => ch.steps.map(newMem));
+  let view = "menu", run = null, tasksVisible = true, lastTest = null;
+
+  function cur() {
+    if (!tasksVisible || view !== "run" || !run || run.idx >= run.steps.length) return null;
+    return { st: run.steps[run.idx], m: run.mem[run.idx] };
+  }
+  const isTest = () => run && run.mode === "test";
+  const finished = m => m.solved || m.revealed || m.answered;
+
+  function taskTargetZ() {
+    const x = cur();
+    if (!x || x.st.target === undefined || finished(x.m)) return null;
+    return { z: x.st.target, done: x.m.goalDone && settled };
+  }
+  function applyPreset() {
+    const x = cur();
+    if (x && !finished(x.m)) {
+      x.m.goalDone = false; x.m.seen = {};
+      const p = x.st.preset;
+      if (p) {
+        if (p.z !== undefined) altitude.value = p.z;
+        if (p.t !== undefined) temperature.value = p.t;
+        if (p.h !== undefined) humidity.value = p.h;
+      }
+    }
+    update();
+    // Vom Programm gesetzte Startwerte sind exakt – sie zählen sofort, ohne Wartezeit.
+    clearTimeout(settleTimer); settled = true;
+    checkTaskGoal(currentCtx());
+  }
+  function currentCtx() {
+    const z = Number(altitude.value), rh0 = Number(humidity.value), t0 = Number(temperature.value);
+    return { z, t0, rh0, s: parcelState(z, t0, rh0) };
+  }
+  function setHighlights() {
+    const x = cur();
+    const active = x && x.st.highlight && !x.m.goalDone && !finished(x.m) ? x.st.highlight : [];
+    document.querySelectorAll(".control").forEach(c => c.classList.toggle("pulse", active.includes(c.dataset.ctrl)));
+    // Braucht eine Aufgabe einen Regler, fährt das Menü automatisch aus.
+    // Nur einmal pro Aufgabe, damit man das Menü danach selbst wieder einfahren kann.
+    if (active.length && x.st !== autoOpenedFor) { autoOpenedFor = x.st; if (!drawerOpen) setDrawer(true); }
+    drawerToggle.classList.toggle("attn", active.length > 0 && !drawerOpen);
+  }
+  function goalHtml(st, m, c) {
+    if (!st.goal || finished(m)) return "";
+    if (m.goalDone) return `<div class="goal done">✓ Auftrag erledigt – beantworte jetzt die Frage.</div>`;
+    const detail = st.goalText ? st.goalText(c, m) : "Auftrag noch nicht erledigt";
+    return `<div class="goal" id="goalBox">⏳ ${detail}</div>`;
+  }
+  function checkTaskGoal(c) {
+    const x = cur();
+    if (!x) return;
+    const { st, m } = x;
+    if (!st.goal || finished(m)) return;
+    const ok = st.goal(c, m);
+    if (ok) m.snap = c;
+    if (ok !== m.goalDone) { m.goalDone = ok; renderTask(); }
+    else if (!ok) {
+      const box = document.getElementById("goalBox");
+      if (box) box.textContent = "⏳ " + (st.goalText ? st.goalText(c, m) : "Auftrag noch nicht erledigt");
+    }
+  }
+  function correctText(st, m) {
+    if (st.q.type === "mc") return st.q.options[st.q.correct];
+    if (st.q.type === "num") return `ca. ${fmt(st.q.expect(m.snap), st.q.dec)} ${st.q.unit}`;
+    return st.q.items.join(" → ");
+  }
+  function setFeedback(cls, html) {
+    const f = document.getElementById("taskFeedback");
+    if (f) { f.className = "feedback " + cls; f.innerHTML = html; }
+  }
+  function revealLink(m) {
+    return m.tries >= 2 ? ` <button class="linkbtn" id="reveal" type="button">Lösung zeigen</button>` : "";
+  }
+  function bindReveal(m) {
+    const r = document.getElementById("reveal");
+    if (r) r.addEventListener("click", () => { m.revealed = true; renderTask(); });
+  }
+
+  // Gemeinsame Auswertung einer Antwort für Übung und Test
+  function submit(st, m, isCorrect, given, wrongMsg) {
+    if (isTest()) {
+      m.answered = true; m.correct = isCorrect; m.given = given;
+      renderTask();
+      setFeedback("", "Antwort gespeichert. Weiter zur nächsten Frage.");
+      return;
+    }
+    m.tries++;
+    if (isCorrect) { m.solved = true; m.firstTry = m.tries === 1; renderTask(); return; }
+    renderTask();
+    setFeedback("bad", wrongMsg + revealLink(m));
+    bindReveal(m);
+  }
+
+  function renderStep() {
+    const { st, m } = { st: run.steps[run.idx], m: run.mem[run.idx] }, c = currentCtx(), test = isTest();
+    const n = run.steps.length;
+    taskCount.innerHTML = test
+      ? `Abschlusstest · Frage ${run.idx + 1} von ${n} <span class="cat">${catName(st.cat)}</span>`
+      : `${catName(st.cat)} · Aufgabe ${run.idx + 1} von ${n}`;
+    taskNav.style.display = "";
+    taskPrev.style.visibility = test ? "hidden" : "visible";
+    taskPrev.disabled = run.idx === 0;
+    taskNext.disabled = !finished(m);
+    taskNext.textContent = run.idx === n - 1 ? "Auswertung →" : "Weiter →";
+
+    const locked = st.goal && !m.goalDone && !finished(m);
+    const p = st.preset || {}, parts = [];
+    if (p.z !== undefined) parts.push(p.z + " m");
+    if (p.t !== undefined) parts.push(p.t + " °C");
+    if (p.h !== undefined) parts.push(p.h + " %");
+    const presetNote = parts.length > 1 && !finished(m)
+      ? `<p class="hint" style="margin:-4px 0 10px">↺ Startwerte für diese Aufgabe gesetzt: ${parts.join(" · ")}</p>` : "";
+    let html = `<p class="task-title">${st.title}</p>${st.text ? `<p class="task-text">${st.text}</p>` : ""}${presetNote}${goalHtml(st, m, c)}`;
+    html += `<div class="question${locked ? " locked" : ""}"><p>${st.q.text}</p>`;
+    const dis = finished(m) ? "disabled" : "";
+
+    if (st.q.type === "mc") {
+      st.q.options.forEach((o, i) => {
+        let cls = "";
+        if (test) cls = m.answered && m.given === o ? " sel" : "";
+        else cls = m.solved && i === st.q.correct ? " ok" : m.wrong.includes(i) ? " bad" : "";
+        const d = finished(m) || (!test && m.wrong.includes(i)) ? "disabled" : "";
+        html += `<button class="opt${cls}" type="button" data-i="${i}" ${d}>${o}</button>`;
+      });
+    } else if (st.q.type === "num") {
+      const val = test && m.answered ? m.given.replace(/ .*/, "") : "";
+      html += `<div class="numrow"><input id="numAnswer" type="text" inputmode="decimal" value="${val}" placeholder="Zahl in ${st.q.unit}" ${dis} aria-label="Antwort in ${st.q.unit}"><button class="btn" id="numCheck" type="button" ${dis}>${test ? "Abgeben" : "Prüfen"}</button></div>`;
+    } else {
+      const shown = m.solved || m.revealed ? st.q.items.map((_, i) => i) : m.order;
+      html += `<ol class="orderlist">${shown.map(i => `<li>${st.q.items[i]}</li>`).join("") || `<li class="empty">Klicke unten den ersten Schritt an …</li>`}</ol>`;
+      if (!finished(m)) {
+        html += `<div class="pool">${m.pool.filter(i => !m.order.includes(i)).map(i => `<button class="opt" type="button" data-o="${i}">${st.q.items[i]}</button>`).join("")}</div>`;
+        html += `<div class="numrow"><button class="btn ghost" id="orderReset" type="button" ${m.order.length ? "" : "disabled"}>Zurücksetzen</button><button class="btn" id="orderCheck" type="button" ${m.order.length === st.q.items.length ? "" : "disabled"}>${test ? "Abgeben" : "Prüfen"}</button></div>`;
+      }
+    }
+    html += `<div class="feedback" id="taskFeedback" aria-live="polite"></div></div>`;
+    taskContent.innerHTML = html;
+
+    const src = st.source ? `<div class="src">Quelle: ${st.source.map(([l, u]) => `<a href="${u}" target="_blank" rel="noopener">${l}</a>`).join(" · ")}</div>` : "";
+    if (!test && m.solved) setFeedback("ok", "Richtig! " + st.explain(m.snap) + src);
+    else if (!test && m.revealed) setFeedback("", `<b>Lösung:</b> ${correctText(st, m).replace(/\.$/, "")}. ${st.explain(m.snap)}` + src);
+    else if (test && m.answered) setFeedback("", "Antwort gespeichert.");
+
+    taskContent.querySelectorAll(".opt[data-i]").forEach(b => b.addEventListener("click", () => {
+      const i = Number(b.dataset.i);
+      if (!test && i !== st.q.correct) m.wrong.push(i);
+      submit(st, m, i === st.q.correct, st.q.options[i], "Noch nicht. Schau dir die Simulation nochmals genau an und versuche es erneut.");
+    }));
+    const input = document.getElementById("numAnswer");
+    if (input && !finished(m)) {
+      const check = () => {
+        const v = parseFloat(input.value.replace(",", ".").replace(/[^0-9.\-]/g, ""));
+        if (Number.isNaN(v)) { setFeedback("bad", "Bitte gib eine Zahl ein."); return; }
+        const exp = st.q.expect(m.snap);
+        submit(st, m, Math.abs(v - exp) <= st.q.tol, fmt(v, st.q.dec) + " " + st.q.unit,
+               `Nicht ganz – dein Wert ist zu ${v > exp ? "gross" : "klein"}.`);
+      };
+      document.getElementById("numCheck").addEventListener("click", check);
+      input.addEventListener("keydown", e => { if (e.key === "Enter") check(); });
+    }
+    taskContent.querySelectorAll(".opt[data-o]").forEach(b => b.addEventListener("click", () => {
+      m.order.push(Number(b.dataset.o)); renderTask();
+    }));
+    const oReset = document.getElementById("orderReset");
+    if (oReset) oReset.addEventListener("click", () => { m.order = []; renderTask(); });
+    const oCheck = document.getElementById("orderCheck");
+    if (oCheck) oCheck.addEventListener("click", () => {
+      const good = m.order.findIndex((v, i) => v !== i);
+      const ok = good === -1;
+      const given = m.order.map(i => st.q.items[i]).join(" → ");
+      const prefix = ok ? 0 : good;
+      if (!ok && !test) m.order = [];
+      submit(st, m, ok, given, prefix > 0
+        ? `Die ersten ${prefix} Schritte stimmen, danach nicht mehr. Versuche es nochmals.`
+        : "Schon der erste Schritt stimmt nicht. Womit beginnt alles?");
+    });
+  }
+
+  function chapterStats(i) {
+    const ms = chapterMem[i];
+    return { done: ms.filter(m => m.solved || m.revealed).length, n: ms.length };
+  }
+  function renderMenu() {
+    taskNav.style.display = "none";
+    taskProgress.style.display = "none";
+    taskCount.textContent = "Übersicht";
+    let html = `<p class="task-text">Bearbeite zuerst die Kapitel im <b>Übungsteil</b>. Danach zeigst du im <b>Abschlusstest</b>, was du gelernt hast.</p><div class="chaps">`;
+    chapters.forEach((ch, i) => {
+      const s = chapterStats(i);
+      if (ch.extra) return;
+      html += `<button class="chap" type="button" data-ch="${i}"><span>${i + 1}. ${ch.name}</span><span class="chap-st">${s.done === s.n ? "✓" : s.done + "/" + s.n}</span></button>`;
+    });
+    const total = chapters.filter(ch => !ch.extra).length * TEST_PER_CATEGORY;
+    html += `</div><button class="btn testbtn" id="startTest" type="button">Abschlusstest starten</button>
+      <p class="hint">${total} gemischte Fragen aus allen Kapiteln · ein Versuch pro Frage · Auswertung am Schluss${lastTest ? ` · Letztes Ergebnis: ${lastTest}` : ""}</p>`;
+    const extras = chapters.map((ch, i) => [ch, i]).filter(([ch]) => ch.extra);
+    if (extras.length) {
+      html += `<p class="extra-label">Zusatzaufgaben mit echten Wetterdaten</p><div class="chaps">`;
+      extras.forEach(([ch, i]) => {
+        const s = chapterStats(i);
+        html += `<button class="chap extra" type="button" data-ch="${i}"><span>${ch.name}</span><span class="chap-st">${s.done === s.n ? "✓" : s.done + "/" + s.n}</span></button>`;
+      });
+      html += `</div>`;
+    }
+    html += `
+      <button class="linkbtn" id="resetAll" type="button">Fortschritt zurücksetzen</button>`;
+    taskContent.innerHTML = html;
+    taskContent.querySelectorAll(".chap").forEach(b => b.addEventListener("click", () => startChapter(Number(b.dataset.ch))));
+    document.getElementById("startTest").addEventListener("click", startTest);
+    document.getElementById("resetAll").addEventListener("click", () => {
+      chapterMem = chapters.map(ch => ch.steps.map(newMem)); lastTest = null; renderTask();
+    });
+  }
+  function renderChapterEnd() {
+    const i = run.ch, ms = run.mem;
+    taskCount.textContent = `${chapters[i].name} · abgeschlossen`;
+    taskNav.style.display = "none";
+    const first = ms.filter(m => m.firstTry).length;
+    const nextCh = chapters[i + 1];
+    let next;
+    if (nextCh && !nextCh.extra) next = `<button class="btn" id="nextChap" type="button">Weiter: ${nextCh.name} →</button>`;
+    else {
+      next = `<button class="btn testbtn" id="toTest" type="button">Zum Abschlusstest →</button>`;
+      if (nextCh && nextCh.extra) next += `<button class="btn ghost" id="nextChap" type="button">${nextCh.name} →</button>`;
+    }
+    taskContent.innerHTML = `<p class="task-title">Kapitel geschafft! 🎉</p>
+      <p class="task-text"><b>${first} von ${ms.length}</b> Aufgaben im ersten Versuch gelöst.</p>
+      <ul class="summary">${run.steps.map((s, k) => `<li>${ms[k].firstTry ? "✅" : ms[k].solved ? "🟡" : "🔍"} ${s.title}</li>`).join("")}</ul>
+      <p class="hint">✅ im ersten Versuch · 🟡 mit mehreren Versuchen · 🔍 Lösung angezeigt</p>
+      <div class="stack">${next}<button class="btn ghost" id="toMenu2" type="button">Zur Übersicht</button></div>`;
+    const nb = document.getElementById("nextChap");
+    if (nb) nb.addEventListener("click", () => startChapter(i + 1));
+    const tb = document.getElementById("toTest");
+    if (tb) tb.addEventListener("click", startTest);
+    document.getElementById("toMenu2").addEventListener("click", showMenu);
+  }
+  function renderTestResult() {
+    const ms = run.mem, steps = run.steps;
+    const right = ms.filter(m => m.correct).length;
+    lastTest = `${right}/${steps.length}`;
+    taskCount.textContent = "Abschlusstest · Auswertung";
+    taskNav.style.display = "none";
+    let rows = "";
+    chapters.forEach(ch => {
+      const idx = steps.map((s, k) => s.cat === ch.id ? k : -1).filter(k => k >= 0);
+      if (!idx.length) return;
+      const r = idx.filter(k => ms[k].correct).length;
+      rows += `<div class="catrow"><span>${ch.name}</span><span class="catbar"><span style="width:${r / idx.length * 100}%"></span></span><b>${r}/${idx.length}</b></div>`;
+    });
+    const details = steps.map((s, k) => `<details${ms[k].correct ? "" : " open"}><summary>${ms[k].correct ? "✅" : "❌"} ${s.q.text}</summary>
+        <p><b>Deine Antwort:</b> ${ms[k].given || "–"}</p>${ms[k].correct ? "" : `<p><b>Richtig:</b> ${correctText(s, ms[k])}</p>`}<p class="hint">${s.explain(ms[k].snap)}</p></details>`).join("");
+    taskContent.innerHTML = `<p class="task-title">Dein Ergebnis: ${right} von ${steps.length} Punkten</p>
+      <div class="cats">${rows}</div>
+      <p class="hint" style="margin:10px 0 6px">Falsch beantwortete Fragen sind aufgeklappt:</p>
+      <div class="details">${details}</div>
+      <div class="stack"><button class="btn" id="newTest" type="button">Neuen Test mit anderen Fragen</button><button class="btn ghost" id="toMenu3" type="button">Zur Übersicht</button></div>`;
+    document.getElementById("newTest").addEventListener("click", startTest);
+    document.getElementById("toMenu3").addEventListener("click", showMenu);
+  }
+  function renderTask() {
+    if (view === "menu" || !run) { renderMenu(); setHighlights(); update0(); return; }
+    taskProgress.style.display = "";
+    taskBar.style.width = (run.idx / run.steps.length * 100) + "%";
+    if (run.idx >= run.steps.length) {
+      if (run.mode === "test") renderTestResult(); else renderChapterEnd();
+    } else renderStep();
+    setHighlights();
+    update0();
+  }
+  function startChapter(i) {
+    const ms = chapterMem[i];
+    const firstOpen = ms.findIndex(m => !(m.solved || m.revealed));
+    view = "run";
+    run = { mode: "practice", ch: i, steps: chapters[i].steps, mem: ms, idx: firstOpen === -1 ? 0 : firstOpen };
+    applyPreset(); renderTask();
+  }
+  function startTest() {
+    let picked = [];
+    chapters.filter(ch => !ch.extra).forEach(ch => { picked = picked.concat(shuffle(testPool[ch.id]).slice(0, TEST_PER_CATEGORY)); });
+    picked = shuffle(picked);
+    view = "run";
+    run = { mode: "test", steps: picked, mem: picked.map(newMem), idx: 0 };
+    applyPreset(); renderTask();
+  }
+  function showMenu() { view = "menu"; run = null; renderTask(); }
+
+  // Zeichnet neu (für Ziellinie), ohne erneut Aufgaben zu prüfen
+  function update0() { if (pressureWidth) drawCurrentView(currentCtx().s, Number(temperature.value), Number(humidity.value)); }
+  taskNext.addEventListener("click", () => { run.idx++; applyPreset(); renderTask(); });
+  taskPrev.addEventListener("click", () => { if (run.idx > 0) { run.idx--; applyPreset(); renderTask(); } });
+  taskMenu.addEventListener("click", showMenu);
+  taskToggle.addEventListener("click", () => {
+    tasksVisible = !tasksVisible;
+    taskBody.style.display = tasksVisible ? "" : "none";
+    taskMenu.style.display = tasksVisible ? "" : "none";
+    taskToggle.textContent = tasksVisible ? "Ausblenden" : "Aufgaben einblenden";
+    setHighlights(); update0();
+    if (tasksVisible) checkTaskGoal(currentCtx());
+  });
+
+  function advanceParticles(dt) {
+    const z=Number(altitude.value), rh0=Number(humidity.value), t0=Number(temperature.value);
+    const state=parcelState(z,t0,rh0);
+    // Für die Sichtbarkeit verstärkte, aber temperaturabhängige Bewegung.
+    const speed=0.5+2.8*Math.max(0,Math.min(1,(state.t+10)/40));
+    for(const dot of movingDots) {
+      dot.x += dot.vx * speed * dt;
+      dot.y += dot.vy * speed * dt;
+      if(dot.x < .16 || dot.x > .84) { dot.x=Math.max(.16,Math.min(.84,dot.x)); dot.vx *= -1; }
+      if(dot.y < .16 || dot.y > .84) { dot.y=Math.max(.16,Math.min(.84,dot.y)); dot.vy *= -1; }
+    }
+    drawCurrentView(state,t0,rh0);
+  }
+  function animate(timestamp) {
+    const dt=lastFrame ? Math.min(.05,(timestamp-lastFrame)/1000) : 0;
+    lastFrame=timestamp;
+    if(pressureWidth) advanceParticles(dt);
+    requestAnimationFrame(animate);
+  }
+  altitude.addEventListener("input",update);
+  humidity.addEventListener("input",update);
+  temperature.addEventListener("input",update);
+  window.addEventListener("resize",fit);
+  fit();
+  renderTask();
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
