@@ -111,6 +111,7 @@
   .drawer input[type="range"] { margin: 8px 0 2px; }
   .drawer .hint { font-size: .8rem; }
   .drawer .control.pulse { margin-left: -6px; margin-right: -6px; padding: 5px 6px; }
+  .ai-note { margin-top: 6px; padding: 8px 11px; border-left: 3px solid var(--accent); background: #eef6f9; border-radius: 0 8px 8px 0; }
   .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   canvas { height: 660px; }
   @media (max-width: 1280px) { .layout { grid-template-columns: 1fr; } }
@@ -185,6 +186,7 @@
     </div>
   </div>
   <p class="note">Das Modell ist vereinfacht. Die Wolkenbasis wird geschätzt. Unterhalb der Wolkenbasis kühlt das Luftpaket mit etwa 1 °C pro 100 Höhenmeter ab, darüber gesättigt mit etwa 0,5 °C. Die Grössenänderung des Quadrats, die Änderung von Länge und Breite der Druckpfeile sowie die Geschwindigkeit der Teilchen sind zur besseren Erkennbarkeit verstärkt.</p>
+  <p class="note ai-note"><strong>Hinweis zur Verwendung von KI:</strong> Diese Simulation wurde mit Unterstützung von KI erstellt und von der Lehrperson auf ihre fachliche Richtigkeit geprüft.</p>
 </main>
 <script>
 (() => {
@@ -321,7 +323,9 @@
     if (labelY > height - 8) labelY = centerY - side/2 - 12;
     ctx.fillText(label, x, labelY);
   }
-  function drawPressureArrows(x, y, side, pressureRatio) {
+  // plot = {left, right, bottom}: Teile der Pfeile ausserhalb der Diagrammfläche
+  // (über den Achsenbeschriftungen) werden durchscheinend gezeichnet.
+  function drawPressureArrows(x, y, side, pressureRatio, plot) {
     const half = side / 2;
     // Die Druckänderung wird gegenüber dem realen Verhältnis verstärkt dargestellt.
     const lowestRatio = pressure(zMax) / pressure(z0);
@@ -334,7 +338,7 @@
     ctx.save();
     ctx.strokeStyle = "#214f66"; ctx.fillStyle = "#214f66";
     ctx.lineWidth = 1.5; ctx.lineJoin = "miter";
-    function arrow(x1, y1, x2, y2) {
+    function arrowPath(x1, y1, x2, y2) {
       const dx=x2-x1, dy=y2-y1, total=Math.hypot(dx,dy);
       const ux=dx/total, uy=dy/total, nx=-uy, ny=ux;
       const neckX=x2-ux*headLength, neckY=y2-uy*headLength;
@@ -346,7 +350,24 @@
       ctx.lineTo(neckX-nx*head/2,neckY-ny*head/2);
       ctx.lineTo(neckX-nx*shaft/2,neckY-ny*shaft/2);
       ctx.lineTo(x1-nx*shaft/2,y1-ny*shaft/2);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.closePath();
+    }
+    function arrow(x1, y1, x2, y2) {
+      // Innerhalb der Diagrammfläche: kräftig.
+      ctx.save();
+      ctx.beginPath(); ctx.rect(plot.left, 0, plot.right - plot.left, plot.bottom); ctx.clip();
+      arrowPath(x1, y1, x2, y2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      // Über den Achsen: durchscheinend, damit die Beschriftungen lesbar bleiben.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, plot.bottom, width, height - plot.bottom);   // unter der Diagrammfläche (x-Achse)
+      ctx.rect(0, 0, plot.left, plot.bottom);                  // links (Höhenachse)
+      ctx.rect(plot.right, 0, width - plot.right, plot.bottom); // rechts (Druckachse)
+      ctx.clip();
+      ctx.globalAlpha = .18;
+      arrowPath(x1, y1, x2, y2); ctx.fill(); ctx.stroke();
+      ctx.restore();
     }
     // Gefüllte, kräftige Pfeile wie beim Drucksymbol.
     arrow(x, y-half-gap-length, x, y-half-gap);
@@ -428,9 +449,11 @@
     }
     const side = parcelSide(state.volumeRatio, 36);
     const pressureRatio = pressure(state.z) / pressure(z0);
-    drawAxisMarkers(state, currentX, currentY, top, bottom, left, right);
-    const arrowLength = drawPressureArrows(currentX, currentY, side, pressureRatio);
+    drawAxisMarkers(state, currentX, currentY, top, bottom, left, right, "guides");
+    const arrowLength = drawPressureArrows(currentX, currentY, side, pressureRatio, { left, right, bottom: bottom + 20 });  // ab hier beginnen die Beschriftungen der x-Achse
     drawPacket(currentX, currentY, side, state.rh >= 99 ? "#9cc8df" : "#efaa78", "Luftpaket", movingDots, arrowLength + 13);
+    // Die Wertmarken an den Achsen liegen immer über den Pfeilen.
+    drawAxisMarkers(state, currentX, currentY, top, bottom, left, right, "tags");
     drawValueCard(state, currentX, currentY, side / 2 + arrowLength + 14, top, bottom, left, right);
   }
   function roundRect(x0, y0, w, h, r) {
@@ -456,12 +479,15 @@
     };
   }
   // Markiert die aktuellen Werte direkt an den drei Achsen.
-  function drawAxisMarkers(state, px, py, top, bottom, left, right) {
-    ctx.save();
-    ctx.setLineDash([2, 4]); ctx.strokeStyle = "rgba(36,76,98,.35)"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, bottom + 22); ctx.stroke();
-    ctx.restore();
+  function drawAxisMarkers(state, px, py, top, bottom, left, right, part) {
+    if (part === "guides") {
+      ctx.save();
+      ctx.setLineDash([2, 4]); ctx.strokeStyle = "rgba(36,76,98,.35)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, bottom + 22); ctx.stroke();
+      ctx.restore();
+      return;
+    }
     function tag(text, cx, cy, align, color) {
       ctx.font = "bold 11px system-ui, sans-serif";
       const w = ctx.measureText(text).width + 12, h = 19;
